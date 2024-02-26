@@ -50,7 +50,7 @@ Guidance on Networking Technologies
     - OSPF deployment requires careful planning, considering network design and scalability.
     - The evolving network technologies might influence OSPF's role and implementation in future networks.
 
-## Detailed OSPF Packet Types
+## OSPF Packet Types
 
 1. **Hello Packets:**
    - **Purpose:** Establish and maintain neighbor relationships.
@@ -79,9 +79,8 @@ Guidance on Networking Technologies
 
 Each of these packet types plays a specific role in OSPF's operation, from establishing neighbor relationships to ensuring routers have up-to-date and synchronized information about the network topology. Understanding these packet types is essential for comprehending OSPF's internal mechanics and for troubleshooting OSPF networks.
 
-## Detailed OSPF Adjacency States
-OSPF routers go through several states while forming adjacencies with other routers. Understanding these states is crucial for network troubleshooting and ensuring efficient OSPF operation. Here are detailed bullet points about each OSPF adjacency state:
-
+## OSPF Adjacency States
+OSPF routers go through several states while forming adjacencies with other routers. Understanding these states is crucial for network troubleshooting and ensuring efficient OSPF operation.
 1. **Down State:**
    - **Initial State:** The starting state of an OSPF adjacency.
    - **No Communication:** In this state, no Hello packets have been received from the neighbor.
@@ -119,7 +118,7 @@ OSPF routers go through several states while forming adjacencies with other rout
 
 Understanding these states helps in diagnosing OSPF-related issues, as each state reflects a specific step in the process of forming a full OSPF adjacency. Proper progression through these states is essential for establishing reliable OSPF routes in a network.
 
-## Detailed OSPF Building Adjacencies
+## OSPF Building Adjacencies
 
 1. **Initiating Adjacency Formation:**
    - **Hello Packets:** Adjacency formation begins with the exchange of OSPF Hello packets.
@@ -155,8 +154,8 @@ Understanding these states helps in diagnosing OSPF-related issues, as each stat
 
 Understanding the process of building adjacencies in OSPF is crucial for network administrators, as it directly impacts the efficiency and stability of OSPF routing in a network. Properly formed adjacencies ensure optimal routing decisions and overall network performance.
 
-## Detailed OSPF LSA Types
-OSPF (Open Shortest Path First) utilizes various types of Link-State Advertisements (LSAs) to share routing and topology information. Each LSA type has a specific purpose, flooding scope, and rules for origination and propagation. Here are detailed bullet points about each OSPF LSA type:
+## OSPF LSA Types
+OSPF (Open Shortest Path First) utilizes various types of Link-State Advertisements (LSAs) to share routing and topology information. Each LSA type has a specific purpose, flooding scope, and rules for origination and propagation.
 
 1. **Type 1: Router LSA**
    - **Flooding Scope:** Limited to the originating router's area.
