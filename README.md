@@ -9,9 +9,10 @@ Guidance on Networking Technologies
    - Known for quick convergence and efficient routing based on the shortest path.
 
 2. **OSPF Areas and Hierarchical Design:**
-   - OSPF employs areas to reduce routing overhead and improve scalability.
+   - OSPF uses areas to reduce routing overhead and improve scalability.
    - Backbone area (Area 0) is central in OSPF's hierarchical design.
-   - OSPF routers categorized as backbone routers, area border routers (ABRs), and autonomous system boundary routers (ASBRs).
+      - All areas have to be  connected to the backbone physically or via virtual links.
+   - OSPF routers are categorized as backbone routers, area border routers (ABRs), and autonomous system boundary routers (ASBRs).
 
 3. **Link-State Database and LSAs:**
    - Maintains a link-state database (LSDB) for storing network topology information.
@@ -19,7 +20,7 @@ Guidance on Networking Technologies
    - Various LSA types (e.g., Type 1, Type 2, Type 3) serve different purposes in OSPF.
 
 4. **Neighbor Relationships and Packet Types:**
-   - OSPF establishes neighbor relationships using packets like Hello, DBD, and others.
+   - OSPF establishes neighbor relationships using packets like Hello, Database Description (DBD), Link State Request (LSR), and Link State Update (LSU).
    - Designated Router (DR) and Backup Designated Router (BDR) roles in OSPF are crucial for efficient LSA management.
 
 5. **OSPF in Multi-Area Networks:**
@@ -28,6 +29,9 @@ Guidance on Networking Technologies
 
 6. **Route Summarization and Network Types:**
    - Route summarization is important in OSPF, especially in multi-area setups.
+   - Summarization definition: Consolidate multiple routes into one single advertisement.
+      - This is normally done at the boundaries of Area Border Routers (ABRs).
+   - Although summarization is configured between any two areas, it is better to summarize in the direction of the backbone. As a result, the backbone receives all the aggregate addresses and, in turn, injects them, already summarized, into other areas.
    - OSPF adapts to various network types and includes DR/BDR elections in specific network scenarios.
 
 7. **Resource Management and Stability:**
@@ -160,7 +164,7 @@ OSPF (Open Shortest Path First) utilizes various types of Link-State Advertiseme
    - **Originating Routers:** Every router in an OSPF area generates this LSA for itself.
 
 2. **Type 2: Network LSA**
-   - **Flooding Scope:** Confined to the originating router's area.
+   - **Flooding Scope:** Limited to the originating router's area.
    - **Purpose:** Describes the routers connected to a particular network, specifically broadcast and NBMA networks.
    - **Originating Routers:** Only the DR for a particular network segment originates this LSA.
 
@@ -192,7 +196,8 @@ Here is the methodical approach to ensure effective troubleshooting OSPF:
 
 1. **Verify OSPF Neighbors**:
    - Use `show ip ospf neighbor` to list OSPF neighbors.
-   - If neighbors aren't forming, check interface IP addresses and masks, OSPF network statements, and ensure they're in the same OSPF area.
+   - If neighbors aren't forming, check interface IP addresses and masks, OSPF network statements, and ensure they're in the same OSPF area and agree on the stub area flag in the Hello packets (if the area is configured as stub area).
+      - `show ip ospf interface  <interface>`
 
 2. **Check Interface Status**:
    - Ensure the interfaces are up with the `show interfaces` command.
