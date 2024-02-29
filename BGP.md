@@ -52,18 +52,35 @@
 - BGP uses the finite-state machine (FSM) to maintain a table of all BGP peers and their operational status.
 - The BGP session may report the following states:
   - `Idle` State: This initial phase kicks off when a new BGP neighbor is configured or an existing BGP peering is reset. During this state, BGP prepares for connection by initializing resources, setting a `ConnectRetry` timer, and attempting to establish a TCP connection with the remote BGP neighbor. It also listens for incoming connections. If the connection attempt is successful, it progresses to the `Connect` state. If not, it remains `Idle`.
-  - `Connect` State: Here, BGP waits for the completion of the TCP three-way handshake. A successful handshake moves the process to the `OpenSent` state. A failure leads to the `Active` state. If the `ConnectRetry` timer expires without a successful connection, the state remains unchanged, and BGP retries the TCP handshake. Any other event, such as a BGP reset, returns the process to the `Idle` state.
+  - `Connect` State: Here, BGP waits for the completion of the TCP three-way handshake. A successful handshake moves the process to the `OpenSent` state. A failure leads to the `Active` state. If the `ConnectRetry` timer expires without a successful connection, the state remains unchanged, and BGP retries the TCP handshake. Any other event, such as a BGP reset, returns the process to the `Idle` state. During this stage, the neighbor with the higher IP address manages the connection. The router initiating the request uses a dynamic source port, but the destination port is always 179
   - `Active` State: In this phase, BGP attempts another TCP three-way handshake with the remote neighbor. Success moves the process to `OpenSent`. If the `ConnectRetry` timer expires, it reverts to the `Connect` state. BGP continues to listen for incoming connections during this phase. Certain events, like resetting BGP, can push the router back to the `Idle` state.
   - `OpenSent` State: BGP waits for an `Open` message from the remote neighbor, which it checks for errors (such as incorrect version numbers, AS numbers, neighbor's IP address, BGP identifiers or router IDs must be unique, password, TTL). Any issues result in a `Notification` message being sent and a return to the `Idle` state. If the `Open` message is valid, BGP sends `Keepalive` messages, resets the keepalive timer, and negotiates the hold time. TCP session failures push BGP back to the `Active` state, while other errors or the expiration of the hold timer result in a `Notification` message and a return to the `Idle` state. Resetting the BGP process also leads back to `Idle`.
   - `OpenConfirm` State: BGP awaits a `Keepalive` message from the remote neighbor. Receiving this message leads to the `Established` state, completing the neighbor adjacency. The hold timer is reset upon receiving a `Keepalive` message. If a `Notification` message is received instead, BGP falls back to the `Idle` state. `Keepalive` messages continue to be sent during this phase.
-  - `Established` State: The neighbor relationship is fully established, allowing the BGP routers to exchange routing information through update packets. Receipt of `Keepalive` or `Update` messages resets the hold timer. Receiving a `Notification` message, however, causes a revert to the `Idle` state.
-Each phase ensures a secure and reliable establishment of BGP neighbor adjacencies, facilitating the exchange of routing information between routers.
+  - `Established` State: The neighbor relationship is fully established, allowing the BGP routers to exchange routing information through `Update` messages. Receipt of `Keepalive` or `Update` messages resets the hold timer. Receiving a `Notification` message, however, causes a revert to the `Idle` state.
+- Each phase ensures a secure and reliable establishment of BGP neighbor adjacencies, facilitating the exchange of routing information between routers.
 
 ## BGP Messages
-- Open Message
-- Update Message
-- Keepalive Message
-- Notification Message
+- Messages Function Overview:
+  - **Open** Message: Sets up and establishes BGP adjacency.
+  - **Keepalive** Message: Ensures that BGP neighbors are still alive.
+  - **Update** Message: Advertises, updates, or withdraws routes.
+  - **Notification** Message: Indicates an error condition to a BGP neighbor.
+
+- Open Message:
+  - The OPEN message is used to establish a BGP adjacency. Both sides negotiate session capabilities before a BGP peering establishes. The OPEN message contains the BGP version number, ASN of the originating router, Hold Time, BGP Identifier, and other optional parameters that establish the session capabilities.
+    - Hold Time
+      - The Hold Time attribute sets the Hold Timer in seconds for each BGP neighbor. Upon receipt of an UPDATE or KEEPALIVE, the Hold Timer resets to the initial value. If the Hold Timer reaches zero, the BGP session is torn down, routes from that neighbor are removed, and an appropriate update route withdraw message is sent to other BGP neighbors for the impacted prefixes. The Hold Time is a heartbeat mechanism for BGP neighbors to ensure that the neighbor is healthy and alive.
+      - When establishing a BGP session, the routers use the smaller Hold Time value contained in the two router’s OPEN messages. The Hold Time value must be at least three seconds, or zero.
+      - Best practice is to have a match hold timer, but technically, it is not required to establish neighbor adjacency.
+    - BGP Identifier
+      - The BGP Router-ID (RID) is a 32-bit unique number that identifies the BGP router in the advertised prefixes as the BGP Identifier. The RID can be used as a loop prevention mechanism for routers advertised within an autonomous system. The RID can be set manually or dynamically for BGP. A nonzero value must be set for routers to become neighbors. The dynamic RID allocation logic varies between the following operating systems.
+      - Setting a static BGP RID is a best practice.
+- Keepalive Message:
+  - BGP does not rely on the TCP connection state to ensure that the neighbors are still alive. Keepalive messages are exchanged every one-third of the Hold Timer agreed upon between the two BGP routers. If the Hold Time is set for zero, no Keepalive messages are sent between the BGP neighbors.
+- Update Message:
+  - The Update message advertises any feasible routes, withdraws previously advertised routes, or can do both. The Update message includes the `Network Layer Reachability Information (NLRI)` that includes the prefix and associated BGP `Path Attributes` when advertising prefixes. Withdrawn NLRIs include only the prefix. An UPDATE message can act as a Keepalive to reduce unnecessary traffic.
+- Notification Message:
+  - A Notification message is sent when an error is detected with the BGP session, such as a hold timer expiring, neighbor capabilities change, or a BGP session reset is requested. This causes the BGP connection to close.
 
 ## Route Maps
 - Route maps are heavily used with BGP. In the BGP context, the route map is a method to control and modify routing information.
