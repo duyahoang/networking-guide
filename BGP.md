@@ -46,7 +46,7 @@
 - In the case of eBGP, peer routers frequently have direct connection, and loopback does not apply.
 - If the IP address of a loopback interface is in the neighbor command, extra configuration on the neighbor router is needed.
   - The neighbor router needs to inform BGP of the use of a loopback interface as the source in the TCP neighbor connection rather than a physical interface to initiate the BGP neighbor TCP connection.
-  - `update-source interface-type interface-number`. For example: `neighbor  10.195.225.11 update-source loopback 1`.
+  - `update-source interface-type interface-number`. For example: `neighbor 10.195.225.11 update-source loopback 1`.
  
 ## BGP Adjacency States
 - BGP uses the finite-state machine (FSM) to maintain a table of all BGP peers and their operational status.
@@ -76,11 +76,23 @@
       - The BGP Router-ID (RID) is a 32-bit unique number that identifies the BGP router in the advertised prefixes as the BGP Identifier. The RID can be used as a loop prevention mechanism for routers advertised within an autonomous system. The RID can be set manually or dynamically for BGP. A nonzero value must be set for routers to become neighbors. The dynamic RID allocation logic varies between the following operating systems.
       - Setting a static BGP RID is a best practice.
 - Keepalive Message:
-  - BGP does not rely on the TCP connection state to ensure that the neighbors are still alive. Keepalive messages are exchanged every one-third of the Hold Timer agreed upon between the two BGP routers. If the Hold Time is set for zero, no Keepalive messages are sent between the BGP neighbors.
+  - BGP does not rely on the TCP connection state to ensure that the neighbors are still alive. Keepalive messages are exchanged every one-third of the Hold Timer agreed upon between the two BGP routers. If the Hold Time is set to zero, no Keepalive messages are sent between the BGP neighbors.
 - Update Message:
-  - The Update message advertises any feasible routes, withdraws previously advertised routes, or can do both. The Update message includes the `Network Layer Reachability Information (NLRI)` that includes the prefix and associated BGP `Path Attributes` when advertising prefixes. Withdrawn NLRIs include only the prefix. An UPDATE message can act as a Keepalive to reduce unnecessary traffic.
+  - The Update message advertises any feasible routes, withdraws previously advertised routes, or can do both. The Update message includes the `Network Layer Reachability Information (NLRI)` that includes the prefix and associated BGP `Path Attributes` (PAs) when advertising prefixes. Withdrawn NLRIs include only the prefix. An UPDATE message can act as a Keepalive to reduce unnecessary traffic.
 - Notification Message:
   - A Notification message is sent when an error is detected with the BGP session, such as a hold timer expiring, neighbor capabilities change, or a BGP session reset is requested. This causes the BGP connection to close.
+
+## Network Command
+- The format of the `network` command is:
+  - `network <network-number> mask <network-mask>`
+- The `network` command controls the networks that originate from this box.
+- This concept is different than the familiar configuration with Interior Gateway Routing Protocol (IGRP) and RIP.
+- The `network` command does not try to run BGP on a certain interface. Instead, it tries to indicate to BGP what networks BGP must originate from this box. The command uses a mask portion because BGP version 4 (BGP4) can handle subnetting and supernetting.
+- The `network` command works if the router knows the network that you attempt to advertise, whether connected, static, or learned dynamically via any other routing prtotocols.
+
+## Loop Prevention
+- BGP is a path vector routing protocol and does not contain a complete topology of the network like link state routing protocols. BGP behaves similarly to distance vector protocols to ensure a path is loop-free.
+- The BGP attribute `AS_PATH` is a well-known mandatory attribute and includes a complete listing of all the ASNs that the prefix advertisement has traversed from its source AS. The AS_PATH is used as a loop prevention mechanism in the BGP protocol. If a BGP router receives a prefix advertisement with its AS listed in the AS_PATH, it discards the prefix because the router thinks the advertisement forms a loop.
 
 ## Route Maps
 - Route maps are heavily used with BGP. In the BGP context, the route map is a method to control and modify routing information.
