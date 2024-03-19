@@ -198,6 +198,16 @@ OSPF (Open Shortest Path First) utilizes various types of Link-State Advertiseme
 
 Each LSA type serves a distinct role in OSPF's operation, aiding in the dissemination of routing and topology information throughout an OSPF network. Understanding these LSA types is crucial for network administrators to effectively manage and troubleshoot OSPF networks.
 
+## Area LSA Restriction
+
+| Area                          | Restriction                                                                                                             |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| Normal                        | None                                                                                                                    |
+| Stub                          | No Type 4 or 5 AS-external LSAs allowed.                                                                                |
+| Totally Stub (no-summary)     | No Type 3, 4 or 5 LSAs allowed except the default summary route.                                                        |
+| NSSA                          | No Type 5 AS-external LSAs allowed, but Type 7 LSAs that convert to Type 5 at the NSSA ABR can traverse.                |
+| NSSA Totally Stub (no-summary)| No Type 3, 4 or 5 LSAs except the default summary route, but Type 7 LSAs that convert to Type 5 at the NSSA ABR are allowed. |
+
 ## Troubleshooting OSPF (Open Shortest Path First) 
 Here is the methodical approach to ensure effective troubleshooting OSPF:
 
@@ -227,3 +237,5 @@ Here is the methodical approach to ensure effective troubleshooting OSPF:
    - If OSPF external routes are missing, check redistribution configuration and ensure proper metrics and subnets are in place.
 
 Always remember to approach troubleshooting methodically. Change one thing at a time, and always document any changes made. This ensures that new issues are not introduced during the troubleshooting process.
+
+
