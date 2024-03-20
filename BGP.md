@@ -87,8 +87,15 @@
   - `network <network-number> mask <network-mask>`
 - The `network` command controls the networks that originate from this box.
 - This concept is different than the familiar configuration with Interior Gateway Routing Protocol (IGRP) and RIP.
-- The `network` command does not try to run BGP on a certain interface. Instead, it tries to indicate to BGP what networks BGP must originate from this box. The command uses a mask portion because BGP version 4 (BGP4) can handle subnetting and supernetting.
-- The `network` command works if the router knows the network that you attempt to advertise, whether connected, static, or learned dynamically via any other routing prtotocols.
+- The `network` command does not try to run BGP on a certain interface. Instead, it tries to indicate to BGP what networks BGP must originate from this box. The command uses a mask portion because BGPv4 can handle subnetting and supernetting.
+- The `network` command works if the router knows the network that you attempt to advertise, whether connected, static, or learned dynamically via any other routing protocols.
+
+## Next Hop Attribute
+- The BGP next hop attribute is the next hop IP address to use in order to reach a certain destination.
+- For eBGP, the next hop is always the IP address of the neighbor that the  neighbor command specifies.
+- For iBGP, the next hop that eBGP advertises must be carried into iBGP.
+  - Make sure the iBGP routers can reach the next hop, otherwise the packets may be dropped.
+- Use `next-hop-self` command to force BGP to use a specific IP address as the next hop.
 
 ## Loop Prevention
 - BGP is a path vector routing protocol and does not contain a complete topology of the network like link state routing protocols. BGP behaves similarly to distance vector protocols to ensure a path is loop-free.
@@ -98,3 +105,90 @@
 - Route maps are heavily used with BGP. In the BGP context, the route map is a method to control and modify routing information.
   - The control and modification of routing information occurs through the definition of conditions for route redistribution from one routing protocol to another.
   - Or the control of routing information can occur at injection in and out of BGP.
+
+## Scaling BGP
+### BGP Confederation
+- BGP confederation reduces the iBGP mesh inside an AS.
+- It divides an AS into multiple ASs and assigns the whole group to a single confederation.
+- Each AS alone has iBGP fully meshed and has connections to other ASs inside the confederation.
+- Even though these ASs have eBGP peers to ASs within the confederation, the ASs exchange routing as if they used iBGP.
+  - -> BGP confederation preserves next hop, metric, and local preference information.
+- To the outside world, the confederation appears to be a single AS.
+
+### Route Reflectors
+- iBGP speaker does not advertise a route that the iBGP speaker learned via another iBGP speaker to a third iBGP speaker.
+- Route Reflector allows a router to advertise, or reflect, iBGP learned routes to other iBGP speakers.
+- Route reflection reduces the number of iBGP peers within an AS.
+- The combination of the RR and the clients is a `cluster`.
+- When an RR receives a route, the RR routes as this list shows. However, this activity depends on the peer type:
+  - Routes from a nonclient peer -> Reflects to all the clients within the cluster.
+  - Routes from a client peer -> Reflects to all the nonclient peers and also to the client peers.
+  - Routes from an eBGP peer -> Sends the update to all client and nonclient peers.
+- Route Reflector avoids loop mechanism:
+  - `originator-id` — This is an optional, nontransitive BGP attribute that is 4 bytes long. An RR creates this attribute. The attribute carries the router ID (RID) of the originator of the route in the local AS. If, due to poor configuration, the routing information comes back to the originator, the information is ignored.
+  - `cluster-list`
+    - A cluster can have more than one RR. All RRs in the same cluster need to be configured with a 4-byte cluster ID so that an RR can recognize updates from RRs in the same cluster.
+    - A cluster list is a sequence of cluster IDs that the route has passed.
+    - When an RR reflects a route from the RR clients to nonclients outside of the cluster, the RR appends the local cluster ID to the cluster list.
+    - With this attribute, an RR can identify if the routing information has looped back to the same cluster due to poor configuration. If the local cluster ID is found in the cluster list, the advertisement is ignored.
+
+
+## BGP Path Selection
+
+| Step | Scope                                        | Name                              | Default                           | Preferred | BGP field        | NOTE                                                                                                                                                                                                                                                                                                                                                                   |
+|------|----------------------------------------------|-----------------------------------|-----------------------------------|-----------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1    | Local to router                             | local Weight                      | "Off"                             | Higher    |                  | Cisco-specific parameter                                                                                                                                                                                                                                                                                                                                               |
+| 2    | Internal to AS                              | Local preference                  | "Off", all set to 100.            | Higher    | LOCAL_PREF       | If there are several iBGP routes from the neighbor, the one with the highest local preference is selected unless there are several routes with the same local preference.                                                                                                                                                                                             |
+| 3    | Accumulated Interior Gateway Protocol (AIGP) |                                   | "Off"                             | Lowest    | AIGP             | rfc7311                                                                                                                                                                                                                                                                                                                                                                |
+| 4    | External to AS                              | Autonomous system (AS) jumps      | "On", skipped if ignored in configuration | Lowest    | AS-path          | AS jumps is the number of AS numbers that must be traversed to reach the advertised destination. AS1–AS2–AS3 is a shorter path with fewer jumps than AS4–AS5–AS6–AS7.                                                                                                                                          |
+| 5    | origin type                                 |                                   | "IGP"                             | Lowest    | ORIGIN           | 0 = IGP\n1 = EGP\n2 = Incomplete                                                                                                                                                                                                                                                                                                                                       |
+| 6    | multi-exit discriminator (MED)              |                                   | "on", imported from IGP           | Lowest    | MULTI_EXIT_DISC  | By default only route with the same autonomous system (AS) is compared. Can be set to ignore same autonomous system (AS).\nBy default Internal IGP is not added. Can be set to add IGP metric. Before the most recent edition of the BGP standard, if an update had no MED value, several implementations created a MED with the highest possible value. The current standard specifies that missing MEDs are treated as the lowest possible value. Since the current rule may cause different behavior than the vendor interpretations, BGP implementations that used the nonstandard default value have a configuration feature that allows the old or standard rule to be selected. |
+| 7    | Local to router (Loc-RIB)                   | eBGP over iBGP paths              | "on"                              |           |                  | Directly connected, over indirectly                                                                                                                                                                                                                                                                                                                                   |
+| 8    | IGP metric to BGP next hop                  |                                   | "on", imported from IGP           | Lowest    |                  | Continue, even if bestpath is already selected. Prefer the route with the lowest interior cost to the next hop, according to the main routing table. If two neighbors advertised the same route, but one neighbor is reachable via a low-bitrate link and the other by a high-bitrate link, and the interior routing protocol calculates lowest cost based on highest bitrate, the route through the high-bitrate link would be preferred and other routes dropped. |
+| 9    | Path that was received first                |                                   | "on"                              | oldest    |                  | Used to ignore changes on the steps 10+                                                                                                                                                                                                                                                                                                                                 |
+| 10   | Router ID                                   |                                   | "on"                              | Lowest    |                  |                                                                                                                                                                                                                                                                                                                                                                         |
+| 11   | Cluster list length                         |                                   | "on"                              | Lowest    |                  |                                                                                                                                                                                                                                                                                                                                                                         |
+| 12   | Neighbor address                            |                                   | "on"                              | Lowest    |                  |                                                                                                                                                                                                                                                                                                                                                                         |
+
+## BGP Route Summarization 
+
+- Network prefix summarization is important concept with BGP due to the large number of network prefixes that BGP can hold.
+  - Summarizing network prefixes conserves router resources and accelerates best-path calculation by reducing the size of the BGP table on downstream routers.
+  - Summarization also provides the benefit of stability by hiding route flaps from downstream routers, thereby reducing routing churn and route computation.
+
+- Two techniques exist for BGP route summarization:
+  - Static: Create a static route (normally to null zero for loop prevention) for the prefix and advertise that prefix with the network statement.
+  - Dynamic: Configure an aggregation network prefix. When valid component routes are present, the router will create an aggrege prefix.
+    - Command: aggregate-address network subnet-mask [summary-only] [as-set]
+
+- In both methods of route aggregation, a new network prefix with a shorter prefix length is advertised into BGP. Because the aggregated prefix is a new route, the summarizing router is the originator for the new aggregate route.
+
+### Atomic Aggregate
+- Aggregated routes act like new BGP routes with a shorter prefix length.
+- BGP path attributes like AS_Path, MED, and BGP communities are not included in the new BGP advertisement.
+- When a BGP router summarizes a route, it does not advertise the AS_Path information from before the aggregation.
+- The atomic aggregate attribute indicates that a loss of path information has occurred.
+- To keep the BGP path information from the smaller component routes, the as-set keyword is used with the aggregation command. As the router generates the aggregate route, BGP attributes from the component aggregate routes are copied over to it.
+- The AS_Path settings from the original prefixes are stored in the AS_SET portion of the AS_Path.
+- The AS_SET, which is displayed within brackets, only counts as one hop, even if multiple ASs are listed.
+- However, if the router find its ASN in the AS_SET, it will discard the route as it think that this information is a loop and does not accept it, it is discarded as far as the validity check.
+- Great care should be used when you use features like as-set and summary-only.
+
+
+## Troubleshooting BGP Peering Issues
+- Is the neighbor not coming up, or is the neighbor flapping?
+  - If Flap:
+    - Check MTU problem using extended ping and maximum size packet
+    - Check the logs see if the message has `hold time expired` and verify the timers configured.
+    - Check the BGP Maximum Prefix
+- Verify Configuration
+  - Peering IP Address
+  - AS Number
+  - MD5 Authentication
+  - ebgp-multihop hop-count (eBGP only)
+- Verify Reachability
+  - ping remote-ip source source-ip
+  - If reachability issues found:
+    - Use traceroute to verify where the trace is dropping
+    - Note: BGP will not use the default route to reach a neighbor.
+- Verify any Firewall /ACLs in the path for TCP 179
