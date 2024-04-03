@@ -34,7 +34,7 @@ Guidance on Networking Technologies
    - Multi-Access
      - Broadcast Multi-Access
      - Non-Broadcast Multi-Access
-        - Avoid DRs and neighbor Command on NBMA
+        - Leverage Point-to-MultiPoint to avoid DRs and neighbor command on NBMA
    - Point-to-Point
      - Point-to-Point Subinterfaces
    - Point-to-MultiPoint
@@ -205,8 +205,27 @@ Each LSA type serves a distinct role in OSPF's operation, aiding in the dissemin
 | Normal                        | None                                                                                                                    |
 | Stub                          | No Type 4 or 5 AS-external LSAs allowed.                                                                                |
 | Totally Stub (no-summary)     | No Type 3, 4 or 5 LSAs allowed except the default summary route.                                                        |
-| NSSA                          | No Type 5 AS-external LSAs allowed, but Type 7 LSAs that convert to Type 5 at the NSSA ABR can traverse.                |
+| NSSA                          | No Type 4 and 5 AS-external LSAs allowed, but Type 7 LSAs that convert to Type 5 at the NSSA ABR can traverse.                |
 | NSSA Totally Stub (no-summary)| No Type 3, 4 or 5 LSAs except the default summary route, but Type 7 LSAs that convert to Type 5 at the NSSA ABR are allowed. |
+
+## Default Route in OSPF
+- By default, an OSPF does not generate a default route into the OSPF routing domain. The router perform the generation of default route become the ASBR.
+- An ASBR can be forced to generate a default route into the OSPF domain.
+   - `default-information originate [always] [metric metric-value] [metric-type type-value] [route-map map-name]`
+   - Without `always` keyword, ASBR only advertise default route 0.0.0.0 only if the ASBR itself already has a default route or if the conditions are satisfied through route-map.
+   - With `always` keyword, ASBR always advertise default route 0.0.0.0 regardless if it has or not. -> use with caution
+- The metric and metric type are the cost and type (E1 or E2) assigned to the default route.
+- The route map specifies the set of conditions that need to be satisfied in order for the default to be generated.
+- The default route 0.0.0.0 appears as the External Route from LSA type 5.
+- In stub and totally stub areas, the ABR to the stub area generates a summary LSA with the link-state ID 0.0.0.0. This is true even if the ABR doesn't have a default route of its own.
+   - In this case, no need to use the default-information originate command.
+   - This is called Default Route LSA Type 3.
+- The ABR for the NSSA generates the default route, but not by default.
+   - To force the ABR NSSA to generate the default route, use the `area <area id> nssa default-information originate` command.
+      - The ABR generates a Type 7 LSA with the link-state ID 0.0.0.0 and is advertised inside the NSSA regardless if it has or not (noted there is no option for always keyword).
+      - This default route will be propagated inside the NSSA as Type 7 LSA.
+   - Another way to advertise the default route inside NSSA is to use the `area <area id> nssa no-summary` (make NSSA as NSSA Totally Stub)
+      - With the `no-summary` keyword, the NSSA ABR will not advertise the inter-area routes (Type 3 summary routes) inside the NSSA, instead will advertise a default route. This default route will be propagated inside the NSSA as Default Route LSA Type 3.
 
 ## Troubleshooting OSPF (Open Shortest Path First) 
 Here is the methodical approach to ensure effective troubleshooting OSPF:
